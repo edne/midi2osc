@@ -22,8 +22,9 @@ class App(object):
 
 class Gui:
     class Row(gtk.HBox):
-        def __init__(self, app):
+        def __init__(self, app, gui):
             self.app = app
+            self.gui = gui
             gtk.HBox.__init__(self)
 
             button = gtk.Button("map")
@@ -31,16 +32,27 @@ class Gui:
             def pressed(*args): self.map()
             button.connect("button_press_event", pressed)
 
-            self.entry = gtk.Entry()
-            self.pack_start(self.entry, True, True)
+            self.path = gtk.Entry()
+            self.pack_start(self.path, True, True)
 
             self.label = gtk.Label()
             self.pack_end(self.label, False, False, 2)
 
             self.show_all()
 
+            self.text = ""
+
         def map(self):
-            self.app.map("osc/path")
+            if self.text:
+                del self.gui.rows[self.text]
+
+            self.text = self.path.get_text()
+            if self.text:
+                self.app.map(self.path.get_text())
+                self.gui.rows[self.text] = self
+
+        def log(self, msg):
+            self.label.set_text(str(msg))
 
     def __init__(self, app):
         self.app = app
@@ -78,6 +90,8 @@ class Gui:
 
         self.win.show_all()
 
+        self.rows = dict()
+
     def run(self):
         gtk.main()
 
@@ -85,10 +99,16 @@ class Gui:
         gtk.main_quit()
 
     def new(self):
-        self.box.pack_start(Gui.Row(self.app), False, False, 1)
+        self.box.pack_start(Gui.Row(self.app, self), False, False, 1)
 
     def reset(self):
-        self.app.reset("0.0.0.0",420)
+        self.app.reset(
+            self.host.get_text(),
+            int(self.port.get_text())
+        )
+
+    def log(self, rowkw, msg):
+        self.rows[rowkw].log(msg)
 
 if __name__=='__main__':
 	App().run()
