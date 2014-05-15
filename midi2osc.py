@@ -1,17 +1,22 @@
 #!/usr/bin/env python
+import sys, threading
 import gtk
+import mididings
 
 class App(object):
     def __init__(self):
         self.host = "127.0.0.1"
         self.port = 7000
 
+        self.midi = Midi()
         self.gui = Gui(self)
 
     def run(self):
+        self.midi.start()
         self.gui.run()
 
     def quit(self, *arg):
+        self.midi.quit()
         self.gui.quit()
 
     def reset(self, host, port):
@@ -19,6 +24,34 @@ class App(object):
 
     def map(self, path):
         print "path: %s" % path
+
+class Midi(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        mididings.config(client_name="midi2osc")
+
+    def run(self):
+        mididings.run(self.handler())
+
+    def quit(self):
+        mididings.engine.quit()
+
+    def handler(self):
+        return(
+            (
+                mididings.Filter(mididings.NOTEON) >>
+                mididings.Process(self.noteon)
+            ) // (
+                mididings.Filter(mididings.CTRL) >>
+                mididings.Process(self.ctrl)
+            )
+        )
+
+    def noteon(self, ev):
+        print ev.note,ev.velocity
+
+    def ctrl(self, ev):
+        print ev.ctrl,ev.value
 
 class Gui:
     class Row(gtk.HBox):
