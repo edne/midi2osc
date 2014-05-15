@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, threading
 import gtk
-import mididings
+import pypm # python-pypm
 
 class App(object):
     def __init__(self):
@@ -42,39 +42,31 @@ class Midi(threading.Thread):
     def __init__(self, app):
         self.app = app
         threading.Thread.__init__(self)
-        mididings.config(client_name="midi2osc")
+
+        self.midiIn = pypm.Input(self._getInputs())
+        self._quit = False
 
     def run(self):
-        mididings.run(self.handler())
+        while not self._quit:
+            while not self.midiIn.Poll(): pass
+            ev = self.midiIn.Read(1)[0][0]
+            if ev[0]==0x90:  # note on
+                self.app.event('n'+str(ev[1]), float(ev[2])/0xF)
+            if ev[0]==0x80:  # note off
+                self.app.event('n'+str(ev[1]), 0.0)
+            if ev[0]==0xB0:  # control
+                self.app.event('c'+str(ev[1]), float(ev[2])/0xF)
 
     def quit(self):
-        mididings.engine.quit()
+        self._quit = True
 
-    def handler(self):
-        return(
-            (
-                mididings.Filter(mididings.NOTEON) >>
-                mididings.Process(self.noteon)
-            ) // (
-                mididings.Filter(mididings.NOTEOFF) >>
-                mididings.Process(self.noteoff)
-            ) // (
-                mididings.Filter(mididings.CTRL) >>
-                mididings.Process(self.ctrl)
-            )
-        )
+    def _getInputs(self):
+        for i in xrange(pypm.CountDevices()):
+            interf,name,inp,outp,opened = pypm.GetDeviceInfo(i)
+            if inp == 1:
+                print name
+                return i
 
-    def noteon(self, ev):
-        self.app.event('n'+str(ev.note), float(ev.velocity)/127)
-        None
-
-    def noteoff(self, ev):
-        self.app.event('n'+str(ev.note), 0.0)
-        None
-
-    def ctrl(self, ev):
-        self.app.event('c'+str(ev.ctrl), float(ev.value)/127)
-        None
 
 class Gui(object):
     class Row(gtk.HBox):
