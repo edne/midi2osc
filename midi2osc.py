@@ -14,13 +14,22 @@ class App(object):
     def quit(self, *arg):
         self.gui.quit()
 
+    def reset(self, host, port):
+        print "reset %s:%d" % (host,port)
+
+    def map(self, path):
+        print "path: %s" % path
+
 class Gui:
     class Row(gtk.HBox):
-        def __init__(self):
+        def __init__(self, app):
+            self.app = app
             gtk.HBox.__init__(self)
 
-            self.button = gtk.Button("map")
-            self.pack_start(self.button, False, False)
+            button = gtk.Button("map")
+            self.pack_start(button, False, False)
+            def pressed(*args): self.map()
+            button.connect("button_press_event", pressed)
 
             self.entry = gtk.Entry()
             self.pack_start(self.entry, True, True)
@@ -29,6 +38,9 @@ class Gui:
             self.pack_end(self.label, False, False, 2)
 
             self.show_all()
+
+        def map(self):
+            self.app.map("osc/path")
 
     def __init__(self, app):
         self.app = app
@@ -47,18 +59,21 @@ class Gui:
         self.port.set_width_chars(6)
         self.port.set_text(str(app.port))
 
-        reset = gtk.Button("set")
-
         hbox = gtk.HBox()
+        self.box.pack_start(hbox, False, False, 1)
+
         hbox.pack_start(self.host, True, True)
         hbox.pack_start(gtk.Label(":"), False, False)
         hbox.pack_start(self.port, False, False)
+
+        reset = gtk.Button("set")
         hbox.pack_start(reset, False, False)
-        self.box.pack_start(hbox, False, False, 1)
+        def pressed(*args): self.reset()
+        reset.connect("button_press_event", pressed)
 
         new = gtk.Button("new")
         self.box.pack_start(new, False, False)
-        def pressed(*args): self.row()
+        def pressed(*args): self.new()
         new.connect("button_press_event", pressed)
 
         self.win.show_all()
@@ -69,8 +84,11 @@ class Gui:
     def quit(self):
         gtk.main_quit()
 
-    def row(self):  # TODO change method name
-        self.box.pack_start(Gui.Row(), False, False, 1)
+    def new(self):
+        self.box.pack_start(Gui.Row(self.app), False, False, 1)
+
+    def reset(self):
+        self.app.reset("0.0.0.0",420)
 
 if __name__=='__main__':
 	App().run()
