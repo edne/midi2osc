@@ -12,8 +12,11 @@ class App(object):
         self.gui = Gui(self)
 
     def run(self):
-        self.midi.start()
-        self.gui.run()
+        try:
+            self.midi.start()
+            self.gui.run()
+    	except KeyboardInterrupt:
+    		self.midi.quit()
 
     def quit(self, *arg):
         self.midi.quit()
@@ -23,7 +26,7 @@ class App(object):
         print "reset %s:%d" % (host,port)
 
     def map(self, path):
-        print "path: %s" % path
+        self.gui.log(path, "--")
 
 class Midi(threading.Thread):
     def __init__(self):
@@ -81,8 +84,8 @@ class Gui:
 
             self.text = self.path.get_text()
             if self.text:
-                self.app.map(self.path.get_text())
                 self.gui.rows[self.text] = self
+                self.app.map(self.path.get_text())
 
         def log(self, msg):
             self.label.set_text(str(msg))
@@ -141,7 +144,8 @@ class Gui:
         )
 
     def log(self, rowkw, msg):
-        self.rows[rowkw].log(msg)
+        if rowkw in self.rows.keys():
+            self.rows[rowkw].log(msg)
 
 if __name__=='__main__':
 	App().run()
