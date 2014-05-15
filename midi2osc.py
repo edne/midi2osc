@@ -8,8 +8,10 @@ class App(object):
         self.host = "127.0.0.1"
         self.port = 7000
 
-        self.midi = Midi()
+        self.midi = Midi(self)
         self.gui = Gui(self)
+
+        self.events = list()
 
     def run(self):
         try:
@@ -28,8 +30,17 @@ class App(object):
     def map(self, path):
         self.gui.log(path, "--")
 
+    def event(self, key, val):
+        print key,val
+
+class Event(object):
+    def __init__(self, key, val):
+        self.key = key
+        self.val = val
+
 class Midi(threading.Thread):
-    def __init__(self):
+    def __init__(self, app):
+        self.app = app
         threading.Thread.__init__(self)
         mididings.config(client_name="midi2osc")
 
@@ -45,18 +56,27 @@ class Midi(threading.Thread):
                 mididings.Filter(mididings.NOTEON) >>
                 mididings.Process(self.noteon)
             ) // (
+                mididings.Filter(mididings.NOTEOFF) >>
+                mididings.Process(self.noteoff)
+            ) // (
                 mididings.Filter(mididings.CTRL) >>
                 mididings.Process(self.ctrl)
             )
         )
 
     def noteon(self, ev):
-        print ev.note,ev.velocity
+        self.app.event('n'+str(ev.note), float(ev.velocity)/127)
+        None
+
+    def noteoff(self, ev):
+        self.app.event('n'+str(ev.note), 0.0)
+        None
 
     def ctrl(self, ev):
-        print ev.ctrl,ev.value
+        self.app.event('c'+str(ev.ctrl), float(ev.value)/127)
+        None
 
-class Gui:
+class Gui(object):
     class Row(gtk.HBox):
         def __init__(self, app, gui):
             self.app = app
