@@ -1,11 +1,7 @@
 #!/usr/bin/env python
 import sys, threading
-import gtk
-#https://github.com/superquadratic/rtmidi-python
+import gtk, gobject
 import rtmidi_python as rtmidi
-
-import gobject
-gobject.threads_init()
 
 class App(object):
     def __init__(self):
@@ -16,6 +12,7 @@ class App(object):
         self.gui = Gui(self)
 
         self.events = list()
+        self.mapping = ''
 
     def run(self):
         try:
@@ -32,15 +29,37 @@ class App(object):
         print "reset %s:%d" % (host,port)
 
     def map(self, path):
-        self.gui.log(path, "--")
+        #self.gui.log(path, "-")
+        self.mapping = path
 
     def event(self, key, val):
-        print key,val
+        if self.mapping:
+            for ev in self.events:
+                if key == ev.key:
+                    del ev
+
+            self.events.append(Event(key, self.mapping, val))
+            self.mapping = ''
+
+        for ev in self.events:
+            if key == ev.key:
+                #self.gui.log(ev.path, val)
+                #self.gui.log(ev.path, 'O')
+                ev.val = val
+                ev.send()
+            else:
+                #self.gui.log(ev.path, 'o')
+                None
+
 
 class Event(object):
-    def __init__(self, key, val):
+    def __init__(self, key, path, val):
         self.key = key
+        self.path = path
         self.val = val
+
+    def send(self):
+        print "sending:", self.key, self.path, self.val
 
 class Midi(threading.Thread):
     def __init__(self, app):
@@ -59,16 +78,16 @@ class Midi(threading.Thread):
             if message:
                 if message[0]==0x90:
                     self.app.event(
-                        'n'+str(message[0]),
-                        float(message[1])/0xF
+                        'n'+str(message[1]),
+                        float(message[2])/0xF
                     )
                 if message[0]==0x80:
-                    self.app.event('n'+str(message[0]),0.0)
+                    self.app.event('n'+str(message[1]),0.0)
 
                 if message[0]==0xB0:
                     self.app.event(
-                        'c'+str(message[0]),
-                        float(message[1])/0xF
+                        'c'+str(message[1]),
+                        float(message[2])/0xF
                     )
 
     def quit(self):
@@ -110,6 +129,8 @@ class Gui(object):
 
     def __init__(self, app):
         self.app = app
+
+        gobject.threads_init()
 
         self.win = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.win.set_title("midi2osc")
