@@ -47,17 +47,14 @@ class App(object):
             self.events.append(
                 Event(self, key, self.mapping, val)
             )
+            print "mapped:", key, self.mapping
             self.mapping = ''
 
         for ev in self.events:
             if key == ev.key:
                 #self.gui.log(ev.path, val)
-                #self.gui.log(ev.path, 'O')
                 ev.val = val
                 ev.send()
-            else:
-                #self.gui.log(ev.path, 'o')
-                None
 
 class Event(object):
     def __init__(self, app, key, path, val):
@@ -67,7 +64,6 @@ class Event(object):
         self.val = val
 
     def send(self):
-        #print "sending:", self.key, self.path, self.val
         self.app.osc.send(self.path, self.val)
 
 class Osc(object):
