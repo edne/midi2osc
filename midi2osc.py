@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 import sys, threading
 import gtk
-import pypm # python-pypm
+#https://github.com/superquadratic/rtmidi-python
+import rtmidi_python as rtmidi
+
+import gobject
+gobject.threads_init()
 
 class App(object):
     def __init__(self):
@@ -41,32 +45,34 @@ class Event(object):
 class Midi(threading.Thread):
     def __init__(self, app):
         self.app = app
+
         threading.Thread.__init__(self)
 
-        self.midiIn = pypm.Input(self._getInputs())
+        self.midi_in = rtmidi.MidiIn()
+        self.midi_in.open_port(0)
+
         self._quit = False
 
     def run(self):
         while not self._quit:
-            while not self.midiIn.Poll(): pass
-            ev = self.midiIn.Read(1)[0][0]
-            if ev[0]==0x90:  # note on
-                self.app.event('n'+str(ev[1]), float(ev[2])/0xF)
-            if ev[0]==0x80:  # note off
-                self.app.event('n'+str(ev[1]), 0.0)
-            if ev[0]==0xB0:  # control
-                self.app.event('c'+str(ev[1]), float(ev[2])/0xF)
+            message, delta_time = self.midi_in.get_message()
+            if message:
+                if message[0]==0x90:
+                    self.app.event(
+                        'n'+str(message[0]),
+                        float(message[1])/0xF
+                    )
+                if message[0]==0x80:
+                    self.app.event('n'+str(message[0]),0.0)
+
+                if message[0]==0xB0:
+                    self.app.event(
+                        'c'+str(message[0]),
+                        float(message[1])/0xF
+                    )
 
     def quit(self):
         self._quit = True
-
-    def _getInputs(self):
-        for i in xrange(pypm.CountDevices()):
-            interf,name,inp,outp,opened = pypm.GetDeviceInfo(i)
-            if inp == 1:
-                print name
-                return i
-
 
 class Gui(object):
     class Row(gtk.HBox):
