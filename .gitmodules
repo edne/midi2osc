@@ -1,3 +1,4 @@
 [submodule "thirdparty/pyOSC"]
 	path = thirdparty/pyOSC
 	url = https://git.gitorious.org/pyosc/devel.git
+	ignore = dirty
