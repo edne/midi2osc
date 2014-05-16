@@ -2,6 +2,8 @@
 import sys, threading
 import gtk, gobject
 import rtmidi_python as rtmidi
+sys.path.insert(0, 'thirdparty/pyOSC')
+import OSC
 
 class App(object):
     def __init__(self):
