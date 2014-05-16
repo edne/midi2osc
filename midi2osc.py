@@ -10,6 +10,7 @@ class App(object):
         self.host = "127.0.0.1"
         self.port = 7000
 
+        self.osc = Osc(self)
         self.midi = Midi(self)
         self.gui = Gui(self)
 
@@ -29,6 +30,9 @@ class App(object):
 
     def reset(self, host, port):
         print "reset %s:%d" % (host,port)
+        self.host = host
+        self.port = port
+        self.osc.reset()
 
     def map(self, path):
         #self.gui.log(path, "-")
@@ -40,7 +44,9 @@ class App(object):
                 if key == ev.key:
                     del ev
 
-            self.events.append(Event(key, self.mapping, val))
+            self.events.append(
+                Event(self, key, self.mapping, val)
+            )
             self.mapping = ''
 
         for ev in self.events:
@@ -53,15 +59,35 @@ class App(object):
                 #self.gui.log(ev.path, 'o')
                 None
 
-
 class Event(object):
-    def __init__(self, key, path, val):
+    def __init__(self, app, key, path, val):
+        self.app = app
         self.key = key
         self.path = path
         self.val = val
 
     def send(self):
-        print "sending:", self.key, self.path, self.val
+        #print "sending:", self.key, self.path, self.val
+        self.app.osc.send(self.path, self.val)
+
+class Osc(object):
+    def __init__(self, app):
+        self.app = app
+        self.client = OSC.OSCClient()
+        self.reset()
+
+    def reset(self):
+        self.client.connect(
+            (self.app.host, self.app.port)
+        )
+
+    def send(self, path, msg):
+        try:
+            self.client.send(
+                OSC.OSCMessage(path, msg)
+            )
+        except OSC.OSCClientError:
+            print "Refused Connection"
 
 class Midi(threading.Thread):
     def __init__(self, app):
